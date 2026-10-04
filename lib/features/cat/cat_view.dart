@@ -14,12 +14,16 @@ class CatView extends StatelessWidget {
     required this.bodyMass,
     required this.energy,
     this.lookAtCamera = false,
+    this.groundShadow = true,
     this.bodyMassDuration = const Duration(milliseconds: 1600),
   });
 
   final double bodyMass;
   final double energy;
   final bool lookAtCamera;
+
+  /// Off when she sits on furniture rather than the floor.
+  final bool groundShadow;
   final Duration bodyMassDuration;
 
   @override
@@ -35,6 +39,7 @@ class CatView extends StatelessWidget {
           bodyMass: mass,
           energy: e,
           lookAtCamera: lookAtCamera,
+          groundShadow: groundShadow,
         ),
       ),
     );
@@ -46,23 +51,25 @@ class _RiveCat extends StatefulWidget {
     required this.bodyMass,
     required this.energy,
     required this.lookAtCamera,
+    required this.groundShadow,
   });
 
   final double bodyMass;
   final double energy;
   final bool lookAtCamera;
+  final bool groundShadow;
 
   @override
   State<_RiveCat> createState() => _RiveCatState();
 }
 
 class _RiveCatState extends State<_RiveCat> {
-  File? _file;
   RiveWidgetController? _controller;
   ViewModelInstance? _vm;
   ViewModelInstanceNumber? _bodyMass;
   ViewModelInstanceNumber? _energy;
   ViewModelInstanceBoolean? _look;
+  ViewModelInstanceNumber? _shadow;
   Object? _error;
 
   @override
@@ -71,13 +78,19 @@ class _RiveCatState extends State<_RiveCat> {
     _load();
   }
 
+  /// One decoded file shared by every cat on screen (Timeline shows five).
+  static Future<File?>? _sharedFile;
+
   Future<void> _load() async {
     try {
-      final file = await File.asset(
+      final file = await (_sharedFile ??= File.asset(
         'assets/rive/avelo_cat.riv',
         riveFactory: Factory.rive,
-      );
-      if (file == null) throw StateError('Could not load avelo_cat.riv');
+      ));
+      if (file == null) {
+        _sharedFile = null;
+        throw StateError('Could not load avelo_cat.riv');
+      }
       final controller = RiveWidgetController(
         file,
         artboardSelector: ArtboardSelector.byName('AveloCat'),
@@ -86,16 +99,15 @@ class _RiveCatState extends State<_RiveCat> {
       final vm = controller.dataBind(DataBind.auto());
       if (!mounted) {
         controller.dispose();
-        file.dispose();
         return;
       }
       setState(() {
-        _file = file;
         _controller = controller;
         _vm = vm;
         _bodyMass = vm.number('bodyMass');
         _energy = vm.number('energy');
         _look = vm.boolean('lookAtCamera');
+        _shadow = vm.number('groundShadow');
       });
       _push();
     } catch (e) {
@@ -107,6 +119,7 @@ class _RiveCatState extends State<_RiveCat> {
     _bodyMass?.value = widget.bodyMass;
     _energy?.value = widget.energy;
     _look?.value = widget.lookAtCamera;
+    _shadow?.value = widget.groundShadow ? 100 : 0;
   }
 
   @override
@@ -120,9 +133,9 @@ class _RiveCatState extends State<_RiveCat> {
     _bodyMass?.dispose();
     _energy?.dispose();
     _look?.dispose();
+    _shadow?.dispose();
     _vm?.dispose();
     _controller?.dispose();
-    _file?.dispose();
     super.dispose();
   }
 

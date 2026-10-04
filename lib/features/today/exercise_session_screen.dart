@@ -64,17 +64,14 @@ class _ExerciseSessionScreenState extends ConsumerState<ExerciseSessionScreen> {
           child: Column(
             children: [
               Expanded(
-                child: CatView(
-                  bodyMass: progress.bodyMass,
-                  energy: 100,
-                ),
+                child: CatView(bodyMass: progress.bodyMass, energy: 100),
               ),
               Text(
                 _finished ? 'Done!' : formatDuration(_left),
                 style: Theme.of(context).textTheme.displaySmall?.copyWith(
-                      fontWeight: FontWeight.w800,
-                      fontFeatures: const [FontFeature.tabularFigures()],
-                    ),
+                  fontWeight: FontWeight.w800,
+                  fontFeatures: const [FontFeature.tabularFigures()],
+                ),
               ),
               const SizedBox(height: 12),
               ClipRRect(
@@ -108,7 +105,10 @@ class _ExerciseSessionScreenState extends ConsumerState<ExerciseSessionScreen> {
                     style: OutlinedButton.styleFrom(
                       minimumSize: const Size(0, 52),
                       shape: const StadiumBorder(),
-                      side: const BorderSide(color: AveloColors.ink, width: 1.5),
+                      side: const BorderSide(
+                        color: AveloColors.ink,
+                        width: 1.5,
+                      ),
                       foregroundColor: AveloColors.ink,
                     ),
                     onPressed: () => setState(() => _paused = !_paused),

@@ -37,6 +37,7 @@ dependencies:
   rive: ^0.14.11
   flutter_riverpod: ^3.4.3
   shared_preferences: ^2.5.5
+  flutter_svg: ^2.3.0
 
 dev_dependencies:
   flutter_test:
@@ -56,6 +57,23 @@ dev_dependencies:
 flutter:
   assets:
     - assets/rive/
+    - assets/scene/
+
+  fonts:
+    - family: YoungSerif
+      fonts:
+        - asset: assets/fonts/YoungSerif-400.ttf
+    - family: Figtree
+      fonts:
+        - asset: assets/fonts/Figtree-400.ttf
+        - asset: assets/fonts/Figtree-500.ttf
+          weight: 500
+        - asset: assets/fonts/Figtree-600.ttf
+          weight: 600
+        - asset: assets/fonts/Figtree-700.ttf
+          weight: 700
+        - asset: assets/fonts/Figtree-800.ttf
+          weight: 800
 
   # The following line ensures that the Material Icons font is
   # included with your application, so that you can use the icons in
