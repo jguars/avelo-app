@@ -28,14 +28,22 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
       ),
     );
     if (finished == true) {
+      final before = ref.read(progressProvider).journey;
       await ref
           .read(progressProvider.notifier)
           .completeExercise(exercise.id, exercise.effort);
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('${exercise.name} done. She felt that too!'),
-          behavior: SnackBarBehavior.floating,
+      final after = ref.read(progressProvider).journey;
+      await showModalBottomSheet<void>(
+        context: context,
+        backgroundColor: AveloColors.surface,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+        ),
+        builder: (_) => _Celebration(
+          exercise: exercise,
+          before: before,
+          after: after,
         ),
       );
     }
@@ -55,7 +63,10 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
         bottom: false,
         child: Column(
           children: [
-            _Header(doneCount: progress.doneToday.length),
+            _Header(
+              doneCount: progress.doneToday.length,
+              journey: progress.journey,
+            ),
             Expanded(
               child: Stack(
                 alignment: Alignment.topCenter,
@@ -99,9 +110,10 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
 }
 
 class _Header extends StatelessWidget {
-  const _Header({required this.doneCount});
+  const _Header({required this.doneCount, required this.journey});
 
   final int doneCount;
+  final double journey;
 
   @override
   Widget build(BuildContext context) {
@@ -128,7 +140,40 @@ class _Header extends StatelessWidget {
               ],
             ),
           ),
+          _JourneyChip(journey: journey),
         ],
+      ),
+    );
+  }
+}
+
+class _JourneyChip extends StatelessWidget {
+  const _JourneyChip({required this.journey});
+
+  final double journey;
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: 'How far she is from her fit shape',
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: AveloColors.surface,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: AveloColors.ink, width: 1.5),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.flag_outlined, size: 16, color: AveloColors.coral),
+            const SizedBox(width: 4),
+            Text(
+              '${(journey * 100).toStringAsFixed(1)}%',
+              style: const TextStyle(fontWeight: FontWeight.w800),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -288,6 +333,98 @@ class _ReadyPanel extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Shown after every finished exercise: the journey bar visibly moves, so
+/// progress feels earned even when her shape changes only a little.
+class _Celebration extends StatelessWidget {
+  const _Celebration({
+    required this.exercise,
+    required this.before,
+    required this.after,
+  });
+
+  final Exercise exercise;
+  final double before;
+  final double after;
+
+  @override
+  Widget build(BuildContext context) {
+    final text = Theme.of(context).textTheme;
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(24, 28, 24, 16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              'You both did it!',
+              textAlign: TextAlign.center,
+              style: text.headlineSmall?.copyWith(fontWeight: FontWeight.w800),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              '${exercise.name} done. She is a little lighter now.',
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: AveloColors.muted),
+            ),
+            const SizedBox(height: 24),
+            TweenAnimationBuilder<double>(
+              tween: Tween(begin: before, end: after),
+              duration: const Duration(milliseconds: 1400),
+              curve: Curves.easeOutCubic,
+              builder: (context, value, _) => Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
+                    children: [
+                      const Text(
+                        'Her journey',
+                        style: TextStyle(fontWeight: FontWeight.w700),
+                      ),
+                      const Spacer(),
+                      Text(
+                        '${(value * 100).toStringAsFixed(1)}%',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w800,
+                          fontFeatures: [FontFeature.tabularFigures()],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: LinearProgressIndicator(
+                      value: value,
+                      minHeight: 14,
+                      backgroundColor: AveloColors.background,
+                      color: AveloColors.coral,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              '+${_formatEffort(exercise.effort)} effort',
+              textAlign: TextAlign.right,
+              style: const TextStyle(color: AveloColors.muted, fontSize: 13),
+            ),
+            const SizedBox(height: 20),
+            FilledButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Back to her'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  static String _formatEffort(double e) =>
+      e == e.roundToDouble() ? e.toStringAsFixed(0) : e.toStringAsFixed(1);
 }
 
 String formatDuration(int seconds) {

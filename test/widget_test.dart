@@ -39,7 +39,7 @@ void main() {
       expect(p.effort, 3);
       expect(p.doneToday, ['squats', 'walk']);
       expect(p.bodyMass, closeTo(97.5, 0.001));
-      expect(p.energy, 75);
+      expect(p.energy, 80);
       expect(p.lastActiveDay, '2026-10-04');
     });
 

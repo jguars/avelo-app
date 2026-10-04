@@ -37,8 +37,15 @@ class Progress {
   /// 100 = round (start), 0 = fit. Drives the Rive `bodyMass` input.
   double get bodyMass => (100 * (1 - effort / kTargetEffort)).clamp(0, 100);
 
+  /// 0..1 share of the way from round to fit.
+  double get journey => 1 - bodyMass / 100;
+
   /// 0 = sleepy, 100 = bright. Drives the Rive `energy` input.
-  double get energy => (15 + 30.0 * doneToday.length).clamp(0, 100);
+  /// The Rive lids snap open between 20 and 60, so the first exercise of the
+  /// day jumps her straight to bright eyes (in-between lids read as moody).
+  double get energy => doneToday.isEmpty
+      ? 15
+      : (60 + 20.0 * (doneToday.length - 1)).clamp(0, 100);
 
   Progress copyWith({
     double? effort,
