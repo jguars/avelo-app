@@ -17,6 +17,17 @@ abstract final class AveloColors {
   static const terracotta = Color(0xFFB24B2C);
   static const peach = Color(0xFFF6DCC4); // her-pick card
   static const track = Color(0xFFF1DDB3); // empty dots and bars
+  static const sage = Color(0xFF93AC8C); // the sofa
+  static const sageSoft = Color(0xFFDDE7D5); // "do more of" cards
+  /// Kept checks on sage; white on it passes 4.5:1.
+  static const sageDeep = Color(0xFF4E7348);
+  static const gold = Color(0xFFF2C14E); // paw coin
+  static const goldLight = Color(0xFFFFE08A);
+  static const goldDeep = Color(0xFFB8862B);
+
+  /// Weight chart: logged weight is terracotta, the plan this blue (dashed).
+  /// The pair passes the colour-blind separation check.
+  static const chartPlan = Color(0xFF3F6FB0);
 }
 
 abstract final class AveloFonts {

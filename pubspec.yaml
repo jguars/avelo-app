@@ -38,6 +38,7 @@ dependencies:
   flutter_riverpod: ^3.4.3
   shared_preferences: ^2.5.5
   flutter_svg: ^2.3.0
+  audioplayers: ^6.8.1
 
 dev_dependencies:
   flutter_test:
@@ -56,8 +57,12 @@ dev_dependencies:
 # The following section is specific to Flutter packages.
 flutter:
   assets:
+    - assets/cat/
+    - assets/cat/squat_heavy/
+    - assets/equipment/
     - assets/rive/
     - assets/scene/
+    - assets/sfx/
 
   fonts:
     - family: YoungSerif

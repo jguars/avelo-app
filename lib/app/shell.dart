@@ -1,50 +1,56 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../data/profile.dart';
+import '../features/plan/plan_screen.dart';
+import '../features/profile/profile_screen.dart';
+import '../features/progress/progress_screen.dart';
+import '../features/shop/shop_screen.dart';
+import '../features/today/today_screen.dart';
+import 'nav.dart';
 import 'theme.dart';
 
-import '../features/dev/cat_lab_screen.dart';
-import '../features/timeline/timeline_screen.dart';
-import '../features/today/today_screen.dart';
-
 /// Bottom-tab shell. Today sits in the middle and is the default tab.
-class AveloShell extends StatefulWidget {
+class AveloShell extends ConsumerWidget {
   const AveloShell({super.key});
 
-  @override
-  State<AveloShell> createState() => _AveloShellState();
-}
-
-class _AveloShellState extends State<AveloShell> {
-  int _index = 2;
-
   static const _tabs = <_Tab>[
+    _Tab('Shop', Icons.storefront_outlined, Icons.storefront),
     _Tab('Plan', Icons.checklist_outlined, Icons.checklist),
-    _Tab('Timeline', Icons.timeline_outlined, Icons.timeline),
     _Tab('Today', Icons.pets_outlined, Icons.pets),
     _Tab('Progress', Icons.show_chart_outlined, Icons.show_chart),
     _Tab('Profile', Icons.person_outline, Icons.person),
   ];
 
+  static const _screens = <Widget>[
+    ShopScreen(),
+    PlanScreen(),
+    TodayScreen(),
+    ProgressScreen(),
+    ProfileScreen(),
+  ];
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    // Loads saved preferences (sound) at startup.
+    ref.watch(profileProvider);
+    final index = ref.watch(tabProvider).index;
     return Scaffold(
       // Screens run under the floating pill; MediaQuery padding tells them
       // how much to leave clear.
       extendBody: true,
       body: IndexedStack(
-        index: _index,
-        children: const [
-          _ComingSoon(title: 'Plan', note: 'Avoid list and pursue list'),
-          TimelineScreen(),
-          TodayScreen(),
-          _ComingSoon(title: 'Progress', note: 'Projected vs actual weight'),
-          _ComingSoon(title: 'Profile', note: 'You, her, and settings'),
+        index: index,
+        children: [
+          // Hidden tabs keep their state but stop animating.
+          for (final (i, screen) in _screens.indexed)
+            TickerMode(enabled: i == index, child: screen),
         ],
       ),
       bottomNavigationBar: _PillNav(
         tabs: _tabs,
-        index: _index,
-        onSelect: (i) => setState(() => _index = i),
+        index: index,
+        onSelect: (i) => ref.read(tabProvider.notifier).go(AveloTab.values[i]),
       ),
     );
   }
@@ -148,33 +154,4 @@ class _Tab {
   final String label;
   final IconData icon;
   final IconData selectedIcon;
-}
-
-class _ComingSoon extends StatelessWidget {
-  const _ComingSoon({required this.title, required this.note});
-
-  final String title;
-  final String note;
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(title),
-        actions: [
-          if (title == 'Profile')
-            IconButton(
-              tooltip: 'Cat lab',
-              icon: const Icon(Icons.science_outlined),
-              onPressed: () => Navigator.of(
-                context,
-              ).push(MaterialPageRoute(builder: (_) => const CatLabScreen())),
-            ),
-        ],
-      ),
-      body: Center(
-        child: Text('$note\n(coming next)', textAlign: TextAlign.center),
-      ),
-    );
-  }
 }

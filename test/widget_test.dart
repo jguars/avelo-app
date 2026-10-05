@@ -1,5 +1,7 @@
 import 'package:avelo/data/progress.dart';
-import 'package:avelo/features/timeline/timeline_screen.dart';
+import 'package:avelo/data/equipment.dart';
+import 'package:avelo/data/exercises.dart';
+import 'package:avelo/data/milestones.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -111,6 +113,27 @@ void main() {
       expect(isReached(d7, withEffort(13.9)), isFalse);
       expect(isReached(d7, withEffort(14)), isTrue);
       expect(isReached(milestones.first, withEffort(0)), isTrue);
+    });
+  });
+
+  group('Economy', () {
+    test('equipment unlocks two richer moves each', () {
+      for (final item in equipmentCatalog) {
+        expect(item.unlocks, hasLength(2), reason: item.id);
+        for (final e in item.unlocks) {
+          expect(e.paws, greaterThan(10), reason: e.id);
+        }
+      }
+      final basics = availableExercises({});
+      expect(basics.every((e) => e.equipment == null), isTrue);
+      final withMat = availableExercises({'mat'});
+      expect(withMat.first.equipment, 'mat');
+      expect(withMat.length, basics.length + 2);
+    });
+
+    test('prices climb with each piece', () {
+      final prices = equipmentCatalog.map((e) => e.price).toList();
+      expect(prices, orderedEquals([...prices]..sort()));
     });
   });
 }

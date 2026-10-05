@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../data/exercises.dart';
 import '../../data/progress.dart';
 import '../cat/cat_view.dart';
 
@@ -16,6 +17,8 @@ class _CatLabScreenState extends ConsumerState<CatLabScreen> {
   double _bodyMass = 100;
   double _energy = 0;
   bool _look = false;
+  bool _exercising = false;
+  CatMove _move = CatMove.squat;
 
   @override
   Widget build(BuildContext context) {
@@ -29,11 +32,30 @@ class _CatLabScreenState extends ConsumerState<CatLabScreen> {
                 bodyMass: _bodyMass,
                 energy: _energy,
                 lookAtCamera: _look,
+                exercising: _exercising,
+                move: _move,
                 bodyMassDuration: Duration.zero,
               ),
             ),
             _slider('bodyMass', _bodyMass, (v) => _bodyMass = v),
             _slider('energy', _energy, (v) => _energy = v),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: SegmentedButton<CatMove>(
+                segments: [
+                  for (final m in CatMove.values)
+                    ButtonSegment(value: m, label: Text(m.name)),
+                ],
+                selected: {_move},
+                showSelectedIcon: false,
+                onSelectionChanged: (s) => setState(() => _move = s.first),
+              ),
+            ),
+            SwitchListTile(
+              title: const Text('exercising'),
+              value: _exercising,
+              onChanged: (v) => setState(() => _exercising = v),
+            ),
             SwitchListTile(
               title: const Text('lookAtCamera'),
               value: _look,

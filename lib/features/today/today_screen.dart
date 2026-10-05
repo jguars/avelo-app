@@ -3,9 +3,14 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../app/paws.dart';
+import '../../app/sfx.dart';
 import '../../app/theme.dart';
 import '../../data/exercises.dart';
+import '../../data/equipment.dart';
 import '../../data/progress.dart';
+import '../../data/wallet.dart';
+import 'celebration_sheet.dart';
 import 'exercise_session_screen.dart';
 import 'living_room.dart';
 
@@ -29,8 +34,10 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
   /// After the daily goal, the card rests until the user asks for more.
   bool _wantsMore = false;
 
-  List<Exercise> _remaining(Progress p) =>
-      dailyExercises.where((e) => !p.doneToday.contains(e.id)).toList();
+  List<Exercise> _remaining(Progress p, Wallet w) =>
+      availableExercises(w.ownedSet)
+          .where((e) => !p.doneToday.contains(e.id))
+          .toList();
 
   Future<void> _start(Exercise exercise) async {
     setState(() => _mode = _Mode.pick);
@@ -45,20 +52,20 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
     await ref
         .read(progressProvider.notifier)
         .completeExercise(exercise.id, exercise.effort);
+    final paws = await ref
+        .read(walletProvider.notifier)
+        .rewardExercise(exercise, ref.read(progressProvider).doneToday.length);
     if (!mounted) return;
     setState(() {
       _pickOffset = 0;
       _wantsMore = false;
     });
-    final after = ref.read(progressProvider).journey;
-    await showModalBottomSheet<void>(
-      context: context,
-      backgroundColor: AveloColors.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-      ),
-      builder: (_) =>
-          _Celebration(exercise: exercise, before: before, after: after),
+    await showCelebration(
+      context,
+      exercise: exercise,
+      journeyBefore: before,
+      progress: ref.read(progressProvider),
+      paws: paws,
     );
   }
 
@@ -74,7 +81,7 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
   Widget build(BuildContext context) {
     final progress = ref.watch(progressProvider);
     final now = ref.watch(clockProvider)();
-    final remaining = _remaining(progress);
+    final remaining = _remaining(progress, ref.watch(walletProvider));
     final goalMet = progress.doneToday.length >= kDailyGoal;
     final pick = remaining.isEmpty
         ? null
@@ -101,7 +108,10 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
         key: ValueKey('pick-${pick.id}'),
         exercise: pick,
         canSwap: remaining.length > 1,
-        onAccept: () => setState(() => _mode = _Mode.ready),
+        onAccept: () {
+          SfxPlayer.instance.play(Sfx.pop);
+          setState(() => _mode = _Mode.ready);
+        },
         onSwap: () => setState(() => _pickOffset++),
       );
     }
@@ -317,9 +327,13 @@ class _ExerciseHeading extends StatelessWidget {
     required this.exercise,
     required this.label,
     required this.detail,
+    this.reward,
   });
 
   final Exercise exercise;
+
+  /// Paws shown after [detail] on the pick card.
+  final int? reward;
   final String label;
   final String detail;
 
@@ -349,11 +363,27 @@ class _ExerciseHeading extends StatelessWidget {
               const SizedBox(height: 2),
               Text(exercise.name, style: display(22)),
               const SizedBox(height: 2),
-              Text(
-                detail,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontSize: 14, color: Color(0xFF6B4A36)),
+              Row(
+                children: [
+                  Flexible(
+                    child: Text(
+                      detail,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        color: Color(0xFF6B4A36),
+                      ),
+                    ),
+                  ),
+                  if (reward case final paws?) ...[
+                    const Text(
+                      '  ·  ',
+                      style: TextStyle(fontSize: 14, color: Color(0xFF6B4A36)),
+                    ),
+                    PawAmount(paws, prefix: '+', size: 14),
+                  ],
+                ],
               ),
             ],
           ),
@@ -385,10 +415,12 @@ class _PickCard extends StatelessWidget {
         children: [
           _ExerciseHeading(
             exercise: exercise,
-            label: 'HER PICK FOR YOU',
-            detail:
-                '${formatDuration(exercise.seconds)} · '
-                '+${formatEffort(exercise.effort)} effort',
+            label: switch (exercise.equipment) {
+              final id? => 'WITH HER ${equipmentById(id).name.toUpperCase()}',
+              null => 'HER PICK FOR YOU',
+            },
+            detail: formatDuration(exercise.seconds),
+            reward: exercise.paws,
           ),
           const SizedBox(height: 14),
           FilledButton(
@@ -460,7 +492,7 @@ class _RestCard extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           Text(
-            allDone ? 'You did all ten. Legend.' : 'Three together!',
+            allDone ? 'You did every one. Legend.' : 'Three together!',
             style: display(22),
           ),
           const SizedBox(height: 4),
@@ -594,94 +626,6 @@ class _DayColumn extends StatelessWidget {
           const SizedBox(height: 4),
           dot,
         ],
-      ),
-    );
-  }
-}
-
-/// Shown after every finished exercise: the journey bar visibly moves, so
-/// progress feels earned even when her shape changes only a little.
-class _Celebration extends StatelessWidget {
-  const _Celebration({
-    required this.exercise,
-    required this.before,
-    required this.after,
-  });
-
-  final Exercise exercise;
-  final double before;
-  final double after;
-
-  @override
-  Widget build(BuildContext context) {
-    return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(24, 28, 24, 16),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(
-              'You both did it!',
-              textAlign: TextAlign.center,
-              style: display(26),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              '${exercise.name} done. She is a little lighter now.',
-              textAlign: TextAlign.center,
-              style: const TextStyle(color: AveloColors.muted, fontSize: 15),
-            ),
-            const SizedBox(height: 24),
-            TweenAnimationBuilder<double>(
-              tween: Tween(begin: before, end: after),
-              duration: const Duration(milliseconds: 1400),
-              curve: Curves.easeOutCubic,
-              builder: (context, value, _) => Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Row(
-                    children: [
-                      const Text(
-                        'Her journey',
-                        style: TextStyle(fontWeight: FontWeight.w700),
-                      ),
-                      const Spacer(),
-                      Text(
-                        '${(value * 100).toStringAsFixed(1)}%',
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w800,
-                          fontFeatures: [FontFeature.tabularFigures()],
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: LinearProgressIndicator(
-                      value: value,
-                      minHeight: 14,
-                      backgroundColor: AveloColors.track,
-                      color: AveloColors.terracotta,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              '+${formatEffort(exercise.effort)} effort',
-              textAlign: TextAlign.right,
-              style: const TextStyle(color: AveloColors.muted, fontSize: 13),
-            ),
-            const SizedBox(height: 20),
-            FilledButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Back to her'),
-            ),
-          ],
-        ),
       ),
     );
   }

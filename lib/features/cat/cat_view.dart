@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:rive/rive.dart';
 
+import '../../data/exercises.dart';
+import 'cat_clip.dart';
+
 /// The Avelo cat, rendered from `assets/rive/avelo_cat.riv`.
 ///
 /// Inputs map 1:1 to the `AveloCatVM` view model in the Rive file:
@@ -15,6 +18,8 @@ class CatView extends StatelessWidget {
     required this.energy,
     this.lookAtCamera = false,
     this.groundShadow = true,
+    this.exercising = false,
+    this.move = CatMove.squat,
     this.bodyMassDuration = const Duration(milliseconds: 1600),
   });
 
@@ -24,10 +29,21 @@ class CatView extends StatelessWidget {
 
   /// Off when she sits on furniture rather than the floor.
   final bool groundShadow;
+
+  /// Plays the workout loop and shows her sweatband.
+  final bool exercising;
+
+  /// Which workout loop plays while [exercising].
+  final CatMove move;
   final Duration bodyMassDuration;
 
   @override
   Widget build(BuildContext context) {
+    // Squats play the Layer clip of the heaviest cat (other moves and sizes
+    // are still the Rive rig).
+    if (exercising && move == CatMove.squat) {
+      return CatClip.squatHeavy(groundShadow: groundShadow);
+    }
     return TweenAnimationBuilder<double>(
       tween: Tween(end: bodyMass),
       duration: bodyMassDuration,
@@ -40,6 +56,8 @@ class CatView extends StatelessWidget {
           energy: e,
           lookAtCamera: lookAtCamera,
           groundShadow: groundShadow,
+          exercising: exercising,
+          move: move,
         ),
       ),
     );
@@ -52,12 +70,16 @@ class _RiveCat extends StatefulWidget {
     required this.energy,
     required this.lookAtCamera,
     required this.groundShadow,
+    required this.exercising,
+    required this.move,
   });
 
   final double bodyMass;
   final double energy;
   final bool lookAtCamera;
   final bool groundShadow;
+  final bool exercising;
+  final CatMove move;
 
   @override
   State<_RiveCat> createState() => _RiveCatState();
@@ -70,6 +92,8 @@ class _RiveCatState extends State<_RiveCat> {
   ViewModelInstanceNumber? _energy;
   ViewModelInstanceBoolean? _look;
   ViewModelInstanceNumber? _shadow;
+  ViewModelInstanceBoolean? _exercising;
+  ViewModelInstanceNumber? _move;
   Object? _error;
 
   @override
@@ -108,6 +132,8 @@ class _RiveCatState extends State<_RiveCat> {
         _energy = vm.number('energy');
         _look = vm.boolean('lookAtCamera');
         _shadow = vm.number('groundShadow');
+        _exercising = vm.boolean('exercising');
+        _move = vm.number('move');
       });
       _push();
     } catch (e) {
@@ -120,6 +146,18 @@ class _RiveCatState extends State<_RiveCat> {
     _energy?.value = widget.energy;
     _look?.value = widget.lookAtCamera;
     _shadow?.value = widget.groundShadow ? 100 : 0;
+    // The state machine only picks a move on its way out of Still, so a new
+    // move while already exercising drops back to Still for one frame.
+    final moveChanged = _move != null && _move!.value != widget.move.index;
+    _move?.value = widget.move.index.toDouble();
+    if (moveChanged && widget.exercising) {
+      _exercising?.value = false;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _exercising?.value = widget.exercising;
+      });
+    } else {
+      _exercising?.value = widget.exercising;
+    }
   }
 
   @override
@@ -134,6 +172,8 @@ class _RiveCatState extends State<_RiveCat> {
     _energy?.dispose();
     _look?.dispose();
     _shadow?.dispose();
+    _exercising?.dispose();
+    _move?.dispose();
     _vm?.dispose();
     _controller?.dispose();
     super.dispose();
